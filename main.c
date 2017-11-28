@@ -15,8 +15,8 @@ void main(int argc,char * argv[])
 {
     printf("Lucy online now\n");
 
-mQueue = CreateList();
-#if 1
+	mQueue = CreateList();
+
 	uartHandle = open("/dev/ttyUSB0",O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if(uartHandle == -1)
 	{
@@ -32,36 +32,9 @@ mQueue = CreateList();
     pthread_create(&cmd_Task,NULL,cmdTask,NULL);
     pthread_create(&rx_Task,NULL,rxTask,NULL);
     pthread_create(&tx_Task,NULL,txTask,NULL);
-#endif
-#if 0
-MSG *pmsg;
-pmsg = (MSG*)malloc(sizeof(MSG));
-char *msgh = (char * )malloc(sizeof(char)*100);
-memcpy(msgh,(char * )"hello",10);
-pmsg->message = msgh;
-pmsg->msg_len = 5;
-PutMessage(mQueue,pmsg,1);
-//free(pmsg);
-char *msgh1 = (char * )malloc(sizeof(char)*100);
-memcpy(msgh1,(char * )"world",10);
-pmsg->message = msgh1;
-pmsg->msg_len = 5;
-PutMessage(mQueue,pmsg,1);
-ReverseQueue(mQueue);
-GetMessage(mQueue);
-
-ReverseQueue(mQueue);
-GetMessage(mQueue);
-
-ReverseQueue(mQueue);
-free(pmsg);
+	pthread_create(&core_Task,NULL,txTask,NULL);
 
 
-//DeleteNode(mQueue);
-ReverseQueue(mQueue);
-#endif
-while(1)
-sleep(1)	;
 
 }
 

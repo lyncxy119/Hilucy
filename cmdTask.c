@@ -29,6 +29,7 @@ void *cmdTask(void *arg)
 			if(strcmp(input,"quit\n") == 0)
 			exit(0);
 		}
+	//	sleep(0.5);
 	}
 
 	

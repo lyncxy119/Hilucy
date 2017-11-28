@@ -41,6 +41,7 @@ void *rxTask(void *arg)
 		{
 			unsigned char rxByte;
 			rxByte = buff[i];		
+	//		printf("0x%02X ",rxByte);
 			if(rxByte == 0xF0)
 			{
 				current_state = SEEK_HEAD;
@@ -137,6 +138,7 @@ void *rxTask(void *arg)
 #endif
 					}
 						current_state = SEEK_HEAD;
+				//printf("\n");
 				break;
 				default:
 				break;
