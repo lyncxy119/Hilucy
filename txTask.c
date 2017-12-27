@@ -161,7 +161,6 @@ void *txTask(void *arg)
 							unsigned char OTA_data[20];
 								memcpy(OTA_data, msg->message + 2, 20);
 
-								
 								req_seq = OTA_data[0];
 								req_num = OTA_data[2] << 8 | OTA_data[3];
 

@@ -319,6 +319,11 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 	  int progress = 0;
  char progress_in_percent = 0, progress_in_percent_last = 0;
 
+ 
+ patch_seq = 0;
+ req_seq = 0;
+ req_num = 0;
+ offset = 0;
 	/*pthread_t ota_Task;
     pthread_create(&ota_Task,NULL,otaTask,NULL);
 	return 1;*/
@@ -453,13 +458,20 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 			//写入patch data
 		while(1)
 		{
-			
+			usleep(1000);
 			if(GetPatchStatus() == 2)
 				break;
 			
+			if(BLE_STATUS == BT_DISCONNECTED)
+			{
+				printf("status %d\n",BLE_STATUS);
+				return ERROR_BLE_DISCONNECTED;
+			}
+			
 			while (GetPatchStatus() == 1)
 			{
-			//	printf("req_seq %03d  req_num %03d\n",req_seq,req_num);
+				
+				printf("req_seq %03d  req_num %03d\n",req_seq,req_num);
 				for (int i = 0; i < req_num; i++)
 				{
 					unsigned char data[100];
@@ -512,6 +524,13 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					
 				}
 				ClearPatchStatus();
+				
+				if(BLE_STATUS == BT_DISCONNECTED)
+				{
+					printf("OTA disconnected\n");
+					return ERROR_BLE_DISCONNECTED;
+
+				}
 			}
 		}
 		printf("OTA over\n");
@@ -681,7 +700,11 @@ INSTALL_CMD(debug,10,do_OTATest);
 {
 	int OTA_status = 0;
 	do_connect(cmd, argc,argv);
-	sleep(2);
+	while(BLE_STATUS != BT_CONNECTED)
+	{
+		
+	};
+	sleep(3);
 	OTA_status = do_OTA(cmd,argc,argv);
 	while(OTA_status != OTA_SUCCESS)
 	{
@@ -689,12 +712,11 @@ INSTALL_CMD(debug,10,do_OTATest);
 		{
 			printf("reconnect\n");
 			do_connect(cmd, argc,argv);
-			sleep(2);
+			while(BLE_STATUS != BT_CONNECTED);	
+			sleep(2);	
 		}
-		else if(BLE_STATUS == BT_CONNECTED)
-		{
-			OTA_status = do_OTA(cmd,argc,argv);
-		}
+		OTA_status = do_OTA(cmd,argc,argv);
+		
 		
 	}
 	
