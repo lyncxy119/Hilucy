@@ -15,15 +15,15 @@
 void *rxTask(void *arg)
 {
 	int UartHandle;
-	UartHandle = open("/dev/ttyUSB0",O_RDWR);
+	UartHandle = open("/dev/Lucy",O_RDWR);
 	if(UartHandle == -1)
 	{
-		printf("can not open ttyUSB0\n");
+		printf("can not open Lucy\n");
 		exit(0) ;
 	}
 	else
 	{
-		printf("ttyUSB0 open success\n");
+		printf("Lucy open success\n");
 	}
    set_opt(UartHandle,115200,8,'N',1);
 	int num = 0;

@@ -2,6 +2,9 @@
 #include "stdlib.h"
 #include "def.h"
 
+
+#define OTA_SUCCESS 0
+#define ERROR_BLE_DISCONNECTED -1
 int patch_seq = 0,req_seq = 0,req_num = 0, offset = 0;
 
 unsigned char debug_content[60*1024];
@@ -311,6 +314,11 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 /***************************************************************/
  int do_OTA(cmd_tbl_s * cmd, int argc,char *argv[])
 {
+	
+	
+	  int progress = 0;
+ char progress_in_percent = 0, progress_in_percent_last = 0;
+
 	/*pthread_t ota_Task;
     pthread_create(&ota_Task,NULL,otaTask,NULL);
 	return 1;*/
@@ -322,14 +330,14 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 	unsigned short Filelength;
 
 		//read firmware content
-	   if(strncmp(argv[1],"1",1) == 0)//ctrl unit
+	   if(strncmp(argv[2],"1",1) == 0)//ctrl unit
 	   {
 		   fp = fopen("OTA_DA14580.bin","r");	
 			unsigned char command[20] = { 0x17,0x00,0x01 };
 
 					Calc_data_send(uartHandle,command, 3, WRITE_CMD);	   
 	   }
-	  else if(strncmp(argv[1],"2",1) == 0)//calc unit
+	  else if(strncmp(argv[2],"2",1) == 0)//calc unit
 	   {
 		   fp = fopen("stm32f411re-cube.bin","r");
 		   
@@ -343,7 +351,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 			   return -1;
 
 	   }
-		  sleep(1);
+		sleep(1);
 		fseek(fp,0,SEEK_END);
 		code_size = ftell(fp);
 		Filelength = code_size;
@@ -361,8 +369,8 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 		
 		Filelength = Filelength + 256;
 		
-		firm_content[2] = (unsigned char)(atoi(argv[2]) >> 8);
-		firm_content[3] = (unsigned char)(atoi(argv[2]) >> 0);
+		firm_content[2] = (unsigned char)(atoi(argv[3]) >> 8);
+		firm_content[3] = (unsigned char)(atoi(argv[3]) >> 0);
 
 		memcpy(firm_content +8,&code_size,4);
 		unsigned short crc_code;
@@ -379,7 +387,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					scramble_offset = 0, scramble_limit = 2,
 					scramble_count = 0;
 				char add = 0;
-				if(strncmp(argv[1],"2",1) == 0)
+				if(strncmp(argv[2],"2",1) == 0)
 				{
 					//插值
 					int calc_offset = 0,insert_value[7];
@@ -445,21 +453,20 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 			//写入patch data
 		while(1)
 		{
+			
 			if(GetPatchStatus() == 2)
 				break;
 			
-			//printf("patch status %d\n",GetPatchStatus());
 			while (GetPatchStatus() == 1)
 			{
-				printf("req_seq %d  req_num %d\n",req_seq,req_num);
-
+			//	printf("req_seq %03d  req_num %03d\n",req_seq,req_num);
 				for (int i = 0; i < req_num; i++)
 				{
 					unsigned char data[100];
 					
 					
 					//char patch_cmd[100] = "WriteHandle: 1E Value: ";
-					if(strncmp(argv[1],"1",1) == 0)
+					if(strncmp(argv[2],"1",1) == 0)
 					{
 						memcpy(data + 1, firm_content + offset * 19, 19);
 					}
@@ -486,19 +493,30 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					unsigned char command[20] = { 0x1E,0x00 };
 					memcpy(command+2,data,20);			
 
+					progress++;
+					progress_in_percent = (progress * 100) / (Filelength / 19);
+					//printf("%d  %d",progress_in_percent,progress_in_percent_last);
+					if (progress_in_percent != progress_in_percent_last)
+					{
+						printf("%02d%%", progress_in_percent);
+						
+						if (progress_in_percent == 100)
+							printf("\n");
+						else
+							printf("\b\b\b");
+						fflush(stdout);
+						progress_in_percent_last = progress_in_percent;
+					}
+					
 					Calc_data_send(uartHandle,command, 22, WRITE_CMD);
 					
-				/*	for(int i = 0;i<19;i++)
-					{
-						printf("0x%02X ",command[i+3]);
-					}
-					printf("\n");*/
 				}
 				ClearPatchStatus();
 			}
 		}
 		printf("OTA over\n");
 		free(firm_content);
+		return OTA_SUCCESS;
 }
 //install command
 INSTALL_CMD(OTA,3,do_OTA);
@@ -615,3 +633,73 @@ INSTALL_CMD(bat,10,do_hex2float);
 
 //install command
 INSTALL_CMD(connectTest,10,do_connectTest);
+
+/**************************************************************/
+//do_cmdSeq 
+//@brief     exec certain command sequence
+//@input 	 
+//@date		2017.10.28
+/***************************************************************/
+ int do_OTATest(cmd_tbl_s * cmd, int argc,char *argv[])
+{
+	for(int i = 0; i < atoi(argv[2]);i++)
+	{
+		do_connect(cmd,argc,argv);
+		
+		sleep(10);
+		
+		
+		do_getver(cmd,argc,argv);
+		sleep(1);
+		do_realtime(cmd,argc,argv);
+		do_getver(cmd,argc,argv);
+
+		//sleep(5);
+		sleep(20);
+		do_stoprealtime(cmd,argc,argv);
+		sleep(1);
+		do_getver(cmd,argc,argv);
+		printf("getversion over\n");
+		sleep(3);
+		do_disconnect(cmd,argc,argv);
+		sleep(3);
+	}
+   return 1;
+}
+
+//install command
+INSTALL_CMD(debug,10,do_OTATest);
+
+
+/**************************************************************/
+//do_cmdSeq 
+//@brief     exec certain command sequence
+//@input 	 
+//@date		2017.10.28
+/***************************************************************/
+ int do_OTAList(cmd_tbl_s * cmd, int argc,char *argv[])
+{
+	int OTA_status = 0;
+	do_connect(cmd, argc,argv);
+	sleep(2);
+	OTA_status = do_OTA(cmd,argc,argv);
+	while(OTA_status != OTA_SUCCESS)
+	{
+		if(BLE_STATUS == BT_DISCONNECTED)
+		{
+			printf("reconnect\n");
+			do_connect(cmd, argc,argv);
+			sleep(2);
+		}
+		else if(BLE_STATUS == BT_CONNECTED)
+		{
+			OTA_status = do_OTA(cmd,argc,argv);
+		}
+		
+	}
+	
+   return 1;
+}
+
+//install command
+INSTALL_CMD(OTAList,10,do_OTAList);

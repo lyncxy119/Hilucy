@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
 #include "def.h"
 #include "uart.h"
 #include "fcntl.h"
@@ -15,12 +17,11 @@ void main(int argc,char * argv[])
 {
     printf("Lucy online now\n");
 
-	mQueue = CreateList();
-
-	uartHandle = open("/dev/ttyUSB0",O_RDWR | O_NOCTTY | O_NONBLOCK);
+mQueue = CreateList();
+	uartHandle = open("/dev/Lucy",O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if(uartHandle == -1)
 	{
-		printf("open uart error\n");
+		printf("%s\n",strerror(errno));
 	}
 	else
 	{
@@ -32,9 +33,10 @@ void main(int argc,char * argv[])
     pthread_create(&cmd_Task,NULL,cmdTask,NULL);
     pthread_create(&rx_Task,NULL,rxTask,NULL);
     pthread_create(&tx_Task,NULL,txTask,NULL);
-	pthread_create(&core_Task,NULL,txTask,NULL);
+	// pthread_create(&core_Task,NULL,txTask,NULL);
 
-
+while(1)
+sleep(1)	;
 
 }
 

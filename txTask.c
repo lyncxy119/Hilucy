@@ -5,8 +5,8 @@ unsigned char PSN[4];
 int progress ;
 int patch_status;
  char progress_in_percent, progress_in_percent_last;
- 
- static FILE *fp_log;
+ int BLE_STATUS = BT_INIT;
+  FILE *fp_log;
 void *txTask(void *arg)
 {
 	MSG *msg;
@@ -56,8 +56,10 @@ void *txTask(void *arg)
 				fwrite(log,strlen(log),1,fp_log);
 				fclose(fp_log);
 				printf("connected\n");
+				BLE_STATUS = BT_CONNECTED;
 				break;
 				case STATUS_DISCONNECTED:
+				BLE_STATUS = BT_DISCONNECTED;
 					printf("disconnected\n");
 				break;
 				case STATUS_NOTIFY:
@@ -81,6 +83,11 @@ void *txTask(void *arg)
 							if(type[0] == 0x00 && type[1] == 0x02)
 							{
 								printf("Ctrl : %04d %02d\nCalc : %04d %02d\n",data[0]<<8|data[1],data[2]<<8|data[3],data[4]<<8|data[5],data[6]<<8|data[7]);
+								if((data[0]<<8|data[1]) == 7)
+									{
+										printf("ctrl app error!\n");
+										sleep(10000);
+									}
 							}
 							if (type[0] == 0x00 && type[1] == 0x04)
 								{
@@ -182,6 +189,7 @@ void *txTask(void *arg)
 					}
 				break;
 				case STATUS_CONNECTING:
+				BLE_STATUS = BT_CONNECTING;
 					printf("connecting\n");
 				break;
 				default:
