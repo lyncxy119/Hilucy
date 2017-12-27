@@ -707,30 +707,58 @@ INSTALL_CMD(debug,10,do_OTATest);
  int do_OTAList(cmd_tbl_s * cmd, int argc,char *argv[])
 {
 	int OTA_status = 0;
+	char psn_list[4][10];
 	
+	struct timeval tv;
+	int current_time = 0;
+	int timeout_flag = 0;
+	memcpy(psn_list[0],"0100765A",8);
+	memcpy(psn_list[1],"010077c8",8);
+	memcpy(psn_list[2],"01007683",8);
+	memcpy(psn_list[3],"010078aa",8);
+	//printf("init\n");
 	do_disconnect(cmd, argc,argv);
-	sleep(1);
-	do_connect(cmd, argc,argv);
-	while(BLE_STATUS != BT_CONNECTED)
+	for(int i = 0;i<4;i++)
 	{
 		
-	};
-	sleep(3);
-	OTA_status = do_OTA(cmd,argc,argv);
-	while(OTA_status != OTA_SUCCESS)
-	{
-		if(BLE_STATUS == BT_DISCONNECTED)
+		gettimeofday(&tv,NULL);
+		current_time = tv.tv_sec;
+		//printf("time %d\n",current_time);
+		memcpy(argv[1],psn_list[i],8);
+		for(int i = 0;i <argc;i++)
+			printf("%s ",argv[i]);
+		printf("\n");
+		sleep(1);
+		do_connect(cmd, argc,argv);
+		while(BLE_STATUS != BT_CONNECTED)
 		{
-			printf("reconnect\n");
-			do_connect(cmd, argc,argv);
-			while(BLE_STATUS != BT_CONNECTED);	
-			sleep(2);	
+			gettimeofday(&tv,NULL);
+			if(tv.tv_sec - current_time > 20)
+			{
+				timeout_flag = 1;
+				//printf("timeout\n");
+				break;
+			}
+		};
+		if(timeout_flag == 1)
+		{
+			timeout_flag = 0;
+			continue;
 		}
+		sleep(3);
 		OTA_status = do_OTA(cmd,argc,argv);
-		
-		
+		while(OTA_status != OTA_SUCCESS)
+		{
+			if(BLE_STATUS == BT_DISCONNECTED)
+			{
+				printf("reconnect\n");
+				do_connect(cmd, argc,argv);
+				while(BLE_STATUS != BT_CONNECTED);	
+				sleep(2);	
+			}
+			OTA_status = do_OTA(cmd,argc,argv);
+		}
 	}
-	
    return 1;
 }
 
