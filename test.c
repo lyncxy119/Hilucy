@@ -464,14 +464,22 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 			
 			if(BLE_STATUS == BT_DISCONNECTED)
 			{
-				printf("status %d\n",BLE_STATUS);
+				if(progress_in_percent < 100)
+				{
+					printf("status %d\n",BLE_STATUS);
 				return ERROR_BLE_DISCONNECTED;
+				}
+				else
+				{
+					printf("OTA OK\n");
+					return OTA_SUCCESS;
+				}
 			}
 			
 			while (GetPatchStatus() == 1)
 			{
 				
-				printf("req_seq %03d  req_num %03d\n",req_seq,req_num);
+			//	printf("req_seq %03d  req_num %03d\n",req_seq,req_num);
 				for (int i = 0; i < req_num; i++)
 				{
 					unsigned char data[100];
@@ -699,6 +707,9 @@ INSTALL_CMD(debug,10,do_OTATest);
  int do_OTAList(cmd_tbl_s * cmd, int argc,char *argv[])
 {
 	int OTA_status = 0;
+	
+	do_disconnect(cmd, argc,argv);
+	sleep(1);
 	do_connect(cmd, argc,argv);
 	while(BLE_STATUS != BT_CONNECTED)
 	{
