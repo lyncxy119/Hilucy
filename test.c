@@ -330,7 +330,6 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
  offset = 0;
 	for(int i =0;i<argc;i++)
 	{
-		
 		printf("argv%d :%s\n",i,argv[i]);
 	}
 	do_getpsn(cmd,argc,argv);
@@ -724,7 +723,11 @@ INSTALL_CMD(debug,10,do_OTATest);
 /**************************************************************/
 //do_cmdSeq 
 //@brief     exec certain command sequence
-//@input 	 
+//@input 	 argv[0]:	OTAList
+//			 argv[1]:	PSN
+//			 argv[2]:	1
+//			 argv[3]:   ctrl version
+//			 argv[4]:   calc version
 //@date		2017.10.28
 /***************************************************************/
  int do_OTAList(cmd_tbl_s * cmd, int argc,char *argv[])
@@ -732,7 +735,7 @@ INSTALL_CMD(debug,10,do_OTATest);
 	int OTA_status = 0;
 	char psn_list[8000][10];
 	FILE *fp_list;
-	
+	char ctrl_version[10],calc_version[10];
 	struct timeval tv;
 	int current_time = 0;
 	int timeout_flag = 0;
@@ -741,6 +744,9 @@ INSTALL_CMD(debug,10,do_OTATest);
 	memcpy(psn_list[2],"01007683",8);
 	memcpy(psn_list[3],"010078aa",8);
 	
+	memcpy((void*)ctrl_version,argv[3],strlen(argv[3]));
+	memcpy((void*)calc_version,argv[4],strlen(argv[4]));
+	printf("%s,%s\n",ctrl_version,calc_version);
 	do_disconnect(cmd, argc,argv);
 	
 	fp_list = fopen("psnlist.txt","r+");
@@ -775,8 +781,10 @@ INSTALL_CMD(debug,10,do_OTATest);
 		
 		sleep(1);
 		do_connect(cmd, argc,argv);
+		static int disconnect_count = 0;
 		while(BLE_STATUS != BT_CONNECTED)
 		{
+			disconnect_count ++;
 			gettimeofday(&tv,NULL);
 			if(tv.tv_sec - current_time > 20)
 			{
@@ -786,7 +794,15 @@ INSTALL_CMD(debug,10,do_OTATest);
 				sleep(1);
 				break;
 			}
+			if(disconnect_count >10)
+			{
+				disconnect_count = 0;
+				timeout_flag = 1;
+				printf("disconnect timeout\n");
+				break;
+			}
 		};
+		disconnect_count = 0;
 		if(timeout_flag == 1)
 		{
 			timeout_flag = 0;
@@ -806,7 +822,10 @@ INSTALL_CMD(debug,10,do_OTATest);
 			OTA_status = do_OTA(cmd,argc,argv);
 		}
 		*argv[2] = '2';
-		*argv[3] = '222';
+		*argv[3] = '322';
+		memcpy(argv[3],(void*)calc_version,strlen(calc_version));
+		for(int i = 0 ; i < argc;i++)
+		printf("%s\n",argv[i]);
 		OTA_status = do_OTA(cmd,argc,argv);
 		while(OTA_status != OTA_SUCCESS)
 		{
@@ -821,6 +840,7 @@ INSTALL_CMD(debug,10,do_OTATest);
 		}
 		*argv[2] = '1';
 		*argv[3] = '111';
+		memcpy(argv[3],(void*)ctrl_version,strlen(ctrl_version));
 		unsigned char command[20] = { 0x17,0x00,0x01 };
 
 					Calc_data_send(uartHandle,command, 3, WRITE_CMD);
