@@ -9,8 +9,9 @@ void *otaTask(void *arg)
 	//read firmware content
    if(strncmp(argv[1],"1",1) == 0)//ctrl unit
    {
-	   fp = fopen("OTA_DA14580.bin","r");	
-		unsigned char command[20] = { 0x17,0x00,0x01 };
+	   fp = fopen("c1","r");
+	   
+	  		unsigned char command[20] = { 0x17,0x00,0x01 };
 
 				Calc_data_send(uartHandle,command, 3, WRITE_CMD);	   
    }

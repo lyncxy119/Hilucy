@@ -130,6 +130,7 @@ void *txTask(void *arg)
 							
 							if((unsigned char)*(msg->message + 11) != 0x01)
 								break;
+						
 							fp_log = fopen("log","a+");
 							if(fp_log	< 0	)
 							printf("log file open error\n");
@@ -141,7 +142,7 @@ void *txTask(void *arg)
 												
 												
 							char log[100];
-							sprintf(log,"时间：%d:%02d:%02d HR:%d\n",timenow->tm_hour,timenow->tm_min,timenow->tm_sec,(unsigned char)*(msg->message + 12));
+							sprintf(log,"时间：%d:%02d:%02d HR:%d\n",timenow->tm_hour,timenow->tm_min,timenow->tm_sec,(unsigned char)*(msg->message + 12));							
 							fwrite(log,strlen(log),1,fp_log);
 							fclose(fp_log);
 							puts(log);

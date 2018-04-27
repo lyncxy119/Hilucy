@@ -6,5 +6,6 @@
 #define CONNECT_REQ	0x40
 #define WRITE_CMD	0x41
 #define DISCONNECT_REQ 0x42
+#define RESET_REQ	0x43
 
 void *txTask(void *arg);
