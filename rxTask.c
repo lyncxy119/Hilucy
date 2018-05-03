@@ -2,6 +2,8 @@
 #include "fcntl.h"
 #include "unistd.h"
 #include "List.h"
+#include "sys/signal.h"
+
 #define SEEK_HEAD 0
 #define SEEK_TYPE 1
 #define SEEK_LEN 2
@@ -11,11 +13,24 @@
 #define ESC_F0 0x01
 #define ESC_FA 0x02
 #define ESC_F5 0x03
-
+#define FALSE 0
+      #define TRUE 1
+volatile int STOP=FALSE; 
+        
+void signal_handler_IO (int status);   /* definition of signal handler */
+int wait_flag=TRUE;                    /* TRUE while no signal received */
+	  
+void signal_handler_IO (int status)
+{
+  //printf("received SIGIO signal.\n");
+  wait_flag = FALSE;
+}
+	  
 void *rxTask(void *arg)
 {
 	int UartHandle;
-	UartHandle = open("/dev/Lucy",O_RDWR);
+	struct sigaction saio;
+	UartHandle = open("/dev/Lucy",O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if(UartHandle == -1)
 	{
 		printf("can not open Lucy\n");
@@ -25,14 +40,28 @@ void *rxTask(void *arg)
 	{
 		printf("Lucy open success\n");
 	}
+	
+	saio.sa_handler = signal_handler_IO;
+	//saio.sa_mask = 0;
+	saio.sa_flags = 0;
+    saio.sa_restorer = NULL;
+    sigaction(SIGIO,&saio,NULL);
+	
+	fcntl(UartHandle, F_SETOWN, getpid());
+        /* Make the file descriptor asynchronous (the manual page says only 
+           O_APPEND and O_NONBLOCK, will work with F_SETFL...) */
+    fcntl(UartHandle, F_SETFL, FASYNC);
+		
    set_opt(UartHandle,115200,8,'N',1);
 	int num = 0;
 	unsigned char buff[255];
 	unsigned char rcvData[100];
 	static int index = 0;
 	static unsigned char ESC_flag = 0;
-    while(1)
+   // while(wait_flag == FALSE)
+	   while(1)
     {
+		
 		num = read(UartHandle,buff,255);
 
 		static unsigned char current_state = SEEK_HEAD,current_type,current_len,current_checksum;	
@@ -144,6 +173,8 @@ void *rxTask(void *arg)
 				break;
 			}
 		}
+		
+		wait_flag == TRUE;
     }
 
 }

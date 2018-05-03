@@ -12,6 +12,7 @@
 #define BT_DISCONNECTED 1
 #define BT_CONNECTED	2
 #define BT_CONNECTING	3
+#define OTA_TIMEOUT  4
 
 extern int patch_status;
 extern int patch_seq ,req_seq,req_num, offset;

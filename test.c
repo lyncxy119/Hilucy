@@ -313,7 +313,10 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 /**************************************************************/
 //do_OTA 
 //@brief     start realtime transfer 
-//@input 	 
+//@input 	1:	psn
+//			2:	ctrl or calc unit
+//			3:	version
+//			4:	.bin file
 //@date		2017.10.28
 /***************************************************************/
  int do_OTA(cmd_tbl_s * cmd, int argc,char *argv[])
@@ -328,29 +331,31 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
  req_seq = 0;
  req_num = 0;
  offset = 0;
-	for(int i =0;i<argc;i++)
+/*	for(int i =0;i<argc;i++)
 	{
 		printf("argv%d :%s\n",i,argv[i]);
-	}
+	}*/
 	do_getpsn(cmd,argc,argv);
 	sleep(1);
 	FILE * fp;
 	int code_size;
 	unsigned char *firm_content,debug_content[80*1024];
 	unsigned int Filelength;
-
+	//读取bin文件
+	printf("file %s\n",argv[4]);
+		fp = fopen(argv[4],"r");
 		//read firmware content
 	   if(strncmp(argv[2],"1",1) == 0)//ctrl unit
 	   {
-		   fp = fopen("ctrl_factory_repair.bin","r");	
-
+		  // fp = fopen("ctrl_factory_repair.bin","r");	
+				
 			unsigned char command[20] = { 0x17,0x00,0x01 };
 
 					Calc_data_send(uartHandle,command, 3, WRITE_CMD);	   
 	   }
 	  else if(strncmp(argv[2],"2",1) == 0)//calc unit
 	   {
-		   fp = fopen("calc_production.bin","r");
+		 //  fp = fopen("calc_production.bin","r");
 		   
 		   unsigned char command[20] = { 0x17,0x00,0x02 };
 
@@ -359,7 +364,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 	  if(fp == NULL)
 	   {
 		   printf("open file error\n");
-		   printf("%s",strerror(errno));
+		   printf("%s\n",strerror(errno));
 			   return -1;
 
 	   }
@@ -484,6 +489,23 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 				}
 			}
 			
+			struct timeval tv;
+			int current_time = 0;
+			gettimeofday(&tv,NULL);
+			current_time = tv.tv_sec;
+			while((GetPatchStatus() == 0) &&(BLE_STATUS != BT_DISCONNECTED))
+			{
+				
+				gettimeofday(&tv,NULL);
+				//current_time = tv.tv_sec;
+				//printf("current %d  time %d\n",current_time,tv.tv_sec);
+				usleep(100);
+				if(tv.tv_sec - current_time > 20)
+				{
+					printf("OTA timeout\n");
+					return OTA_TIMEOUT;
+				}
+			}
 			while (GetPatchStatus() == 1)
 			{
 				
@@ -520,7 +542,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 				//	printf("%s\n",argv[2]);
 					if(strncmp(argv[2],"1",1) == 0)	
 					usleep(10000);
-				else
+					else
 					usleep(40000);
 					//Serial_Write(hSerial, patch_cmd, strlen(patch_cmd));
 					unsigned char command[20] = { 0x1E,0x00 };
@@ -728,6 +750,9 @@ INSTALL_CMD(debug,10,do_OTATest);
 //			 argv[2]:	1
 //			 argv[3]:   ctrl version
 //			 argv[4]:   calc version
+//			 argv[5]:	ctrl file 
+//			 argv[6]:   calc file
+//			 argv[7]:   encrypt file
 //@date		2017.10.28
 /***************************************************************/
  int do_OTAList(cmd_tbl_s * cmd, int argc,char *argv[])
@@ -735,10 +760,11 @@ INSTALL_CMD(debug,10,do_OTATest);
 	int OTA_status = 0;
 	char psn_list[8000][10];
 	FILE *fp_list;
-	char ctrl_version[10],calc_version[10];
+	char ctrl_version[10] = {0},calc_version[10] = {0};
 	struct timeval tv;
 	int current_time = 0;
 	int timeout_flag = 0;
+	int OTA_timeout_flag = 0;
 	memcpy(psn_list[0],"0100765A",8);
 	memcpy(psn_list[1],"010077c8",8);
 	memcpy(psn_list[2],"01007683",8);
@@ -746,7 +772,10 @@ INSTALL_CMD(debug,10,do_OTATest);
 	
 	memcpy((void*)ctrl_version,argv[3],strlen(argv[3]));
 	memcpy((void*)calc_version,argv[4],strlen(argv[4]));
-	printf("%s,%s\n",ctrl_version,calc_version);
+	printf("calc %s\n",calc_version);
+	//strcat(argv[3],'\0');
+	//strcat(argv[3],'\0');
+	//printf("len %d  %d  %s,%s\n",strlen(ctrl_version),strlen(calc_version),ctrl_version,calc_version);
 	do_disconnect(cmd, argc,argv);
 	
 	fp_list = fopen("psnlist.txt","r+");
@@ -781,7 +810,7 @@ INSTALL_CMD(debug,10,do_OTATest);
 		
 		sleep(1);
 		do_connect(cmd, argc,argv);
-		static int disconnect_count = 0;
+	    int disconnect_count = 0;
 		while(BLE_STATUS != BT_CONNECTED)
 		{
 			disconnect_count ++;
@@ -794,13 +823,6 @@ INSTALL_CMD(debug,10,do_OTATest);
 				sleep(1);
 				break;
 			}
-			if(disconnect_count >10)
-			{
-				disconnect_count = 0;
-				timeout_flag = 1;
-				printf("disconnect timeout\n");
-				break;
-			}
 		};
 		disconnect_count = 0;
 		if(timeout_flag == 1)
@@ -809,6 +831,11 @@ INSTALL_CMD(debug,10,do_OTATest);
 			continue;
 		}
 		sleep(3);
+		//控制单元OTA文件
+		printf("%d   file %s\n",strlen(argv[5]),argv[5]);
+		//argv[4] = argv[5];
+		//memcpy(argv[4],argv[5],strlen(argv[5]));
+		argv[4] = "ctrl_factory_repair.bin";
 		OTA_status = do_OTA(cmd,argc,argv);
 		while(OTA_status != OTA_SUCCESS)
 		{
@@ -818,14 +845,31 @@ INSTALL_CMD(debug,10,do_OTATest);
 				do_connect(cmd, argc,argv);
 				while(BLE_STATUS != BT_CONNECTED);	
 				sleep(2);	
+				OTA_status = do_OTA(cmd,argc,argv);
 			}
-			OTA_status = do_OTA(cmd,argc,argv);
+			else if(OTA_status == OTA_TIMEOUT)
+			{
+				OTA_timeout_flag = 1;
+				usleep(100);
+				break;
+			}
 		}
+		if(OTA_timeout_flag == 1)
+		{
+			OTA_timeout_flag = 0;
+			continue;
+		}
+		//OTA加密固件
 		*argv[2] = '2';
-		*argv[3] = '322';
-		memcpy(argv[3],(void*)calc_version,strlen(calc_version));
-		for(int i = 0 ; i < argc;i++)
-		printf("%s\n",argv[i]);
+		//*argv[3] = '322';
+		//memcpy(argv[3],(void*)calc_version,strlen(calc_version));
+		argv[3] = calc_version;
+		//加密固件OTA文件
+		//memcpy(argv[4],argv[7],strlen(argv[7]));
+		argv[4] = "SEC1908_401.bin";
+		printf("%s\n",argv[4]);
+		//for(int i = 0 ; i < argc;i++)
+		//printf("%s\n",argv[i]);
 		OTA_status = do_OTA(cmd,argc,argv);
 		while(OTA_status != OTA_SUCCESS)
 		{
@@ -835,16 +879,68 @@ INSTALL_CMD(debug,10,do_OTATest);
 				do_connect(cmd, argc,argv);
 				while(BLE_STATUS != BT_CONNECTED);	
 				sleep(2);	
+				OTA_status = do_OTA(cmd,argc,argv);
 			}
-			OTA_status = do_OTA(cmd,argc,argv);
+			if(OTA_status == OTA_TIMEOUT)
+			{
+				OTA_timeout_flag  = 1;
+				break;
+			}
+			
+		}
+		if(OTA_timeout_flag == 1)
+		{
+			OTA_timeout_flag = 0;
+			continue;
+		}
+		else
+		printf("加密固件ok\n");
+		//OTA加密固件完成
+		
+		*argv[2] = '2';
+		//*argv[3] = '322';
+		//memcpy(argv[3],(void*)calc_version,strlen(calc_version));
+		argv[3] = calc_version;
+		//计算单元固件OTA文件
+		//memcpy(argv[4],argv[6],strlen(argv[6]));
+		argv[4] = "calc_production.bin";
+		printf("%s\n",argv[4]);
+	
+				OTA_status = do_OTA(cmd,argc,argv);
+				while(OTA_status != OTA_SUCCESS)
+				{
+					if(BLE_STATUS == BT_DISCONNECTED)
+					{
+						printf("reconnect\n");
+						do_connect(cmd, argc,argv);
+						while(BLE_STATUS != BT_CONNECTED);	
+						sleep(2);
+						OTA_status = do_OTA(cmd,argc,argv);						
+					}
+					else if(OTA_status == OTA_TIMEOUT)
+					{
+						OTA_timeout_flag = 1;
+						break;
+					}
+					
+				}
+		
+		if(OTA_timeout_flag == 1)
+		{
+			OTA_timeout_flag = 0;
+			continue;
 		}
 		*argv[2] = '1';
-		*argv[3] = '111';
-		memcpy(argv[3],(void*)ctrl_version,strlen(ctrl_version));
+		//*argv[3] = '111';
+		//memcpy(argv[3],(void*)ctrl_version,strlen(ctrl_version));
+		argv[3] = ctrl_version;
+		//printf("len %d\n",sizeof(ctrl_version));
 		unsigned char command[20] = { 0x17,0x00,0x01 };
 
-					Calc_data_send(uartHandle,command, 3, WRITE_CMD);
-					BLE_STATUS = BT_DISCONNECTED;
+			//		Calc_data_send(uartHandle,command, 3, WRITE_CMD);
+			
+		do_getver(cmd,argc,argv);
+		BLE_STATUS = BT_DISCONNECTED;
 		FILE * log;
 					log = fopen("OTA_list.log","a+");
 					
