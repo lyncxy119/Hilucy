@@ -376,6 +376,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 		fseek(fp,0,SEEK_SET);
 		
 		firm_content = (unsigned char *)malloc(Filelength +256 +30);
+		memset(firm_content,0,Filelength +256 +30);
 		if(firm_content == NULL)
 			printf("malloc error\n");
 		
@@ -495,10 +496,9 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 			current_time = tv.tv_sec;
 			while((GetPatchStatus() == 0) &&(BLE_STATUS != BT_DISCONNECTED))
 			{
-				
 				gettimeofday(&tv,NULL);
 				//current_time = tv.tv_sec;
-				//printf("current %d  time %d\n",current_time,tv.tv_sec);
+			//	printf("current time \n");
 				usleep(100);
 				if(tv.tv_sec - current_time > 20)
 				{
@@ -509,7 +509,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 			while (GetPatchStatus() == 1)
 			{
 				
-			//	printf("req_seq %03d  req_num %03d\n",req_seq,req_num);
+				//printf("req_seq %03d  req_num %03d\n",req_seq,req_num);
 				for (int i = 0; i < req_num; i++)
 				{
 					unsigned char data[100];
@@ -541,11 +541,19 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					}*/
 				//	printf("%s\n",argv[2]);
 					if(strncmp(argv[2],"1",1) == 0)	
-					usleep(10000);
+					{
+						//printf("ctrl\n");
+						usleep(10000);
+					}
+					
 					else
-					usleep(40000);
+					{
+						//printf("calc\n");
+						usleep(40000);
+					}
+					
 					//Serial_Write(hSerial, patch_cmd, strlen(patch_cmd));
-					unsigned char command[20] = { 0x1E,0x00 };
+					unsigned char command[22] = { 0x1E,0x00 };
 					memcpy(command+2,data,20);			
 					progress++;
 					progress_in_percent = (int)(progress * 100) /(int) (Filelength / 19);
@@ -555,8 +563,12 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					{
 						printf("%02d%%", progress_in_percent);
 						
-						if (progress_in_percent == 100)
+						if (progress_in_percent >= 100)
+						{
 							printf("\n");
+							//printf("bin file transfer over\n");
+							//break;
+						}
 						else
 							printf("\b\b\b");
 						fflush(stdout);
@@ -565,6 +577,11 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					
 					Calc_data_send(uartHandle,command, 22, WRITE_CMD);
 					
+					/*for(int i = 0;i < 22;i ++)
+					{
+						printf("0x%02X ",command[i]);
+					}
+					printf("\n");*/
 				}
 				ClearPatchStatus();
 				
@@ -576,9 +593,11 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 				}
 			}
 		}
+	//	memset(firm_content,0,Filelength +256 +30);
 		printf("OTA over\n");
 		ClearPatchStatus();
 		free(firm_content);
+		//firm_content = NULL;
 		return OTA_SUCCESS;
 }
 //install command
@@ -835,7 +854,7 @@ INSTALL_CMD(debug,10,do_OTATest);
 		printf("%d   file %s\n",strlen(argv[5]),argv[5]);
 		//argv[4] = argv[5];
 		//memcpy(argv[4],argv[5],strlen(argv[5]));
-		argv[4] = "ctrl_factory_repair.bin";
+		argv[4] = "CTRL2096.bin";
 		OTA_status = do_OTA(cmd,argc,argv);
 		while(OTA_status != OTA_SUCCESS)
 		{
@@ -859,7 +878,8 @@ INSTALL_CMD(debug,10,do_OTATest);
 			OTA_timeout_flag = 0;
 			continue;
 		}
-		//OTA加密固件
+	#if 1
+	//OTA加密固件
 		*argv[2] = '2';
 		//*argv[3] = '322';
 		//memcpy(argv[3],(void*)calc_version,strlen(calc_version));
@@ -896,14 +916,14 @@ INSTALL_CMD(debug,10,do_OTATest);
 		else
 		printf("加密固件ok\n");
 		//OTA加密固件完成
-		
+	//	#endif
 		*argv[2] = '2';
 		//*argv[3] = '322';
 		//memcpy(argv[3],(void*)calc_version,strlen(calc_version));
 		argv[3] = calc_version;
 		//计算单元固件OTA文件
 		//memcpy(argv[4],argv[6],strlen(argv[6]));
-		argv[4] = "calc_production.bin";
+		argv[4] = "CALC1954.bin";
 		printf("%s\n",argv[4]);
 	
 				OTA_status = do_OTA(cmd,argc,argv);
@@ -930,16 +950,19 @@ INSTALL_CMD(debug,10,do_OTATest);
 			OTA_timeout_flag = 0;
 			continue;
 		}
+		#endif
 		*argv[2] = '1';
 		//*argv[3] = '111';
 		//memcpy(argv[3],(void*)ctrl_version,strlen(ctrl_version));
 		argv[3] = ctrl_version;
 		//printf("len %d\n",sizeof(ctrl_version));
-		unsigned char command[20] = { 0x17,0x00,0x01 };
+		//unsigned char command[20] = { 0x17,0x00,0x01 };
 
 			//		Calc_data_send(uartHandle,command, 3, WRITE_CMD);
 			
 		do_getver(cmd,argc,argv);
+		sleep(2);
+		do_disconnect(cmd,argc,argv);
 		BLE_STATUS = BT_DISCONNECTED;
 		FILE * log;
 					log = fopen("OTA_list.log","a+");
