@@ -77,12 +77,12 @@ void *txTask(void *arg)
 							memcpy(data,msg->message+4,20);
 							if(type[0] == 0x00 && type[1] == 0x01)
 							{
-								printf("PSN : %02X%02X%02X%02X\n",data[0],data[1],data[2],data[3]);
+								printf("PSN=%02X%02X%02X%02X\n",data[0],data[1],data[2],data[3]);
 								memcpy(PSN,data,4);
 							}
 							if(type[0] == 0x00 && type[1] == 0x02)
 							{
-								printf("Ctrl : %04d %02d\nCalc : %04d %02d\n",data[0]<<8|data[1],data[2]<<8|data[3],data[4]<<8|data[5],data[6]<<8|data[7]);
+								printf("Ctrl=%04d\nCtrlBoot=%02d\nCalc=%04d\nCalcBoot=%02d\n",data[0]<<8|data[1],data[2]<<8|data[3],data[4]<<8|data[5],data[6]<<8|data[7]);
 								if((data[0]<<8|data[1]) == 7)
 									{
 										printf("ctrl app error!\n");
@@ -117,7 +117,7 @@ void *txTask(void *arg)
 								}
 							if(type[0] == 0x00 && type[1] == 0x1B)
 							{
-								printf("HWID : %d\n",data[0]<<8|data[1]);
+								printf("HWID=%d\n",data[0]<<8|data[1]);
 							}
 						}
 						break;

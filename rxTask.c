@@ -17,7 +17,7 @@
 void *rxTask(void *arg)
 {
 	int UartHandle;
-	UartHandle = open("/dev/Lucy",O_RDWR);
+	UartHandle = open("/dev/Lucy",O_RDWR|O_NONBLOCK);
 	if(UartHandle == -1)
 	{
 		printf("can not open Lucy\n");

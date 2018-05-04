@@ -490,7 +490,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 				}
 			}
 			
-			struct timeval tv;
+		/*	struct timeval tv;
 			int current_time = 0;
 			gettimeofday(&tv,NULL);
 			current_time = tv.tv_sec;
@@ -505,7 +505,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					printf("OTA timeout\n");
 					return OTA_TIMEOUT;
 				}
-			}
+			}*/
 			while (GetPatchStatus() == 1)
 			{
 				
@@ -846,6 +846,7 @@ INSTALL_CMD(debug,10,do_OTATest);
 		disconnect_count = 0;
 		if(timeout_flag == 1)
 		{
+			do_disconnect(cmd, argc,argv);
 			timeout_flag = 0;
 			continue;
 		}
@@ -876,6 +877,7 @@ INSTALL_CMD(debug,10,do_OTATest);
 		if(OTA_timeout_flag == 1)
 		{
 			OTA_timeout_flag = 0;
+			do_disconnect(cmd, argc,argv);
 			continue;
 		}
 	#if 1
