@@ -6,7 +6,14 @@
 #define OTA_SUCCESS 0
 #define ERROR_BLE_DISCONNECTED -1
 int patch_seq = 0,req_seq = 0,req_num = 0, offset = 0;
-
+extern int hwid_flag;
+extern int version_flag;
+extern int psn_flag;
+extern short ctrl_app_version;
+extern short ctrl_boot_version;
+extern short calc_app_version;
+extern short calc_boot_version;
+extern short hw_id;
 unsigned char debug_content[60*1024];
 unsigned short crc_16(unsigned char *data_p, unsigned short length, unsigned short crc_code);
 int do_test (cmd_tbl_s * cmd, int argc,char *argv[])
@@ -490,7 +497,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 				}
 			}
 			
-		/*	struct timeval tv;
+			struct timeval tv;
 			int current_time = 0;
 			gettimeofday(&tv,NULL);
 			current_time = tv.tv_sec;
@@ -498,14 +505,18 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 			{
 				gettimeofday(&tv,NULL);
 				//current_time = tv.tv_sec;
-			//	printf("current time \n");
+				//printf("current time \n");
 				usleep(100);
 				if(tv.tv_sec - current_time > 20)
 				{
-					printf("OTA timeout\n");
+					printf("OTA timeout %d\n");
+					do_disconnect(cmd,argc,argv);
+					BLE_STATUS = BT_DISCONNECTED;
+					ClearPatchStatus();
+					free(firm_content);
 					return OTA_TIMEOUT;
 				}
-			}*/
+			}
 			while (GetPatchStatus() == 1)
 			{
 				
@@ -549,7 +560,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					else
 					{
 						//printf("calc\n");
-						usleep(40000);
+						usleep(20000);
 					}
 					
 					//Serial_Write(hSerial, patch_cmd, strlen(patch_cmd));
@@ -774,6 +785,8 @@ INSTALL_CMD(debug,10,do_OTATest);
 //			 argv[7]:   encrypt file
 //@date		2017.10.28
 /***************************************************************/
+
+FILE *fp_device_info;
  int do_OTAList(cmd_tbl_s * cmd, int argc,char *argv[])
 {
 	int OTA_status = 0;
@@ -788,6 +801,12 @@ INSTALL_CMD(debug,10,do_OTATest);
 	memcpy(psn_list[1],"010077c8",8);
 	memcpy(psn_list[2],"01007683",8);
 	memcpy(psn_list[3],"010078aa",8);
+	
+	
+	fp_device_info = fopen("DeviceInfoList.txt","a+");
+	if(fp_device_info == NULL)
+		printf("file open error\n");
+	fclose(fp_device_info);
 	
 	memcpy((void*)ctrl_version,argv[3],strlen(argv[3]));
 	memcpy((void*)calc_version,argv[4],strlen(argv[4]));
@@ -855,7 +874,28 @@ INSTALL_CMD(debug,10,do_OTATest);
 		printf("%d   file %s\n",strlen(argv[5]),argv[5]);
 		//argv[4] = argv[5];
 		//memcpy(argv[4],argv[5],strlen(argv[5]));
-		argv[4] = "CTRL2096.bin";
+		argv[4] = "CTRL2111.bin";
+			
+		do_gethwid(cmd,argc,argv);
+		
+		gettimeofday(&tv,NULL);
+		int hwid_timeout_flag = 0;
+		while(hwid_flag != 1)
+		{
+			gettimeofday(&tv,NULL);
+			if(tv.tv_sec - current_time > 15)
+			{
+				hwid_timeout_flag = 1;
+				hwid_flag = 0;
+				break;
+			}
+			usleep(200);
+		}
+		if(hwid_timeout_flag == 1)
+		{
+			hwid_timeout_flag = 0;
+			//hwid = 0;
+		}
 		OTA_status = do_OTA(cmd,argc,argv);
 		while(OTA_status != OTA_SUCCESS)
 		{
@@ -874,12 +914,14 @@ INSTALL_CMD(debug,10,do_OTATest);
 				break;
 			}
 		}
+		#if 1
 		if(OTA_timeout_flag == 1)
 		{
 			OTA_timeout_flag = 0;
 			do_disconnect(cmd, argc,argv);
 			continue;
 		}
+		
 	#if 1
 	//OTA加密固件
 		*argv[2] = '2';
@@ -953,6 +995,7 @@ INSTALL_CMD(debug,10,do_OTATest);
 			continue;
 		}
 		#endif
+		#endif
 		*argv[2] = '1';
 		//*argv[3] = '111';
 		//memcpy(argv[3],(void*)ctrl_version,strlen(ctrl_version));
@@ -961,8 +1004,45 @@ INSTALL_CMD(debug,10,do_OTATest);
 		//unsigned char command[20] = { 0x17,0x00,0x01 };
 
 			//		Calc_data_send(uartHandle,command, 3, WRITE_CMD);
-			
+			sleep(2);
+		//do_connect(cmd, argc,argv);	
+		//sleep(8);
 		do_getver(cmd,argc,argv);
+		version_flag = 0;
+		gettimeofday(&tv,NULL);
+		int version_timeout_flag = 0;
+		while(version_flag != 1)
+		{
+			gettimeofday(&tv,NULL);
+
+			if(tv.tv_sec - current_time > 5)
+			{
+				version_flag = 0;
+				version_timeout_flag = 1;
+				break;
+			}
+			usleep(200);
+		}
+		if(version_timeout_flag == 1)
+		{
+			ctrl_app_version = 0;
+			ctrl_boot_version = 0;
+			calc_app_version = 0;
+			calc_boot_version = 0;
+		}
+		else
+		{
+			printf("version %d %d %d %d\n",ctrl_app_version,ctrl_boot_version,calc_app_version,calc_boot_version);
+		}
+		
+		if(hwid_timeout_flag == 1)
+		{
+			hw_id = 0;
+		}
+		else
+		{
+			printf("hwid %d\n",hw_id);
+		}
 		sleep(2);
 		do_disconnect(cmd,argc,argv);
 		BLE_STATUS = BT_DISCONNECTED;

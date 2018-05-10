@@ -7,6 +7,12 @@ int patch_status;
  char progress_in_percent, progress_in_percent_last;
  int BLE_STATUS = BT_INIT;
   FILE *fp_log;
+  extern FILE *fp_device_info;
+int hwid_flag = 0;
+int version_flag = 0;
+int psn_flag = 0;
+short ctrl_app_version,ctrl_boot_version,calc_app_version,calc_boot_version;
+short hw_id;
 void *txTask(void *arg)
 {
 	MSG *msg;
@@ -77,17 +83,39 @@ void *txTask(void *arg)
 							memcpy(data,msg->message+4,20);
 							if(type[0] == 0x00 && type[1] == 0x01)
 							{
-								printf("PSN=%02X%02X%02X%02X\n",data[0],data[1],data[2],data[3]);
+								fp_device_info = fopen("DeviceInfoList.txt","a+");
+								if(fp_device_info	< 0	)
+									printf("device info file open error\n");
+								
+								char log[100];
+								sprintf(log,"PSN=%02X%02X%02X%02X\n",data[0],data[1],data[2],data[3]);
+								fwrite(log,strlen(log),1,fp_device_info);
+								fclose(fp_device_info);
+								printf("%s\n",log);
 								memcpy(PSN,data,4);
+								psn_flag = 1;
 							}
 							if(type[0] == 0x00 && type[1] == 0x02)
 							{
+								fp_device_info = fopen("DeviceInfoList.txt","a+");
+								if(fp_device_info	< 0	)
+									printf("device info file open error\n");
+								
+								char log[100];
+								sprintf(log,"Ctrl=%04d\nCtrlBoot=%02d\nCalc=%04d\nCalcBoot=%02d\n",data[0]<<8|data[1],data[2]<<8|data[3],data[4]<<8|data[5],data[6]<<8|data[7]);
+								fwrite(log,strlen(log),1,fp_device_info);
+								fclose(fp_device_info);
 								printf("Ctrl=%04d\nCtrlBoot=%02d\nCalc=%04d\nCalcBoot=%02d\n",data[0]<<8|data[1],data[2]<<8|data[3],data[4]<<8|data[5],data[6]<<8|data[7]);
 								if((data[0]<<8|data[1]) == 7)
 									{
 										printf("ctrl app error!\n");
 										sleep(10000);
 									}
+									ctrl_app_version = data[0]<<8|data[1];
+									ctrl_boot_version = data[2]<<8|data[3];
+									calc_app_version = data[4]<<8|data[5];
+									calc_boot_version = data[6]<<8|data[7];
+									version_flag = 1;
 							}
 							if (type[0] == 0x00 && type[1] == 0x04)
 								{
@@ -117,7 +145,17 @@ void *txTask(void *arg)
 								}
 							if(type[0] == 0x00 && type[1] == 0x1B)
 							{
+								
+								fp_device_info = fopen("DeviceInfoList.txt","a+");
+									if(fp_device_info	< 0	)
+										printf("device info file open error\n");
+								char log[100];
+								sprintf(log,"HWID=%d\n",data[0]<<8|data[1]);
+								fwrite(log,strlen(log),1,fp_device_info);
+								fclose(fp_device_info);
 								printf("HWID=%d\n",data[0]<<8|data[1]);
+								hw_id = data[0]<<8|data[1];
+								hwid_flag = 1;
 							}
 						}
 						break;
