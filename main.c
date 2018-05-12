@@ -16,7 +16,7 @@ Queue CreateList(void);
 void main(int argc,char * argv[])
 {
     printf("Lucy online now\n");
-
+	printf("lucy build by yanan %s %s\n",__DATE__,__TIME__);
 mQueue = CreateList();
 	uartHandle = open("/dev/Lucy",O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if(uartHandle == -1)

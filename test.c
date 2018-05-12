@@ -59,6 +59,7 @@ void reset_device(void)
 	}
 	else if(argc == 0)
 	{
+		printf("arg error\n");
 		return 0;
 	}
 	unsigned char buffer[50];
@@ -514,7 +515,7 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 					reset_device();
 					BLE_STATUS = BT_DISCONNECTED;
 					ClearPatchStatus();
-					printf("OTA timeout %d\n");
+					printf("OTA timeout\n");
 					do_disconnect(cmd,argc,argv);
 					/*do_disconnect(cmd,argc,argv);
 					BLE_STATUS = BT_DISCONNECTED;
@@ -852,7 +853,8 @@ FILE *fp_device_info;
 			printf("%s ",argv[i]);
 		printf("\n");*/
 		//do_upload(cmd, argc,argv);
-		//sleep(1);
+		do_disconnect(cmd, argc,argv);
+		sleep(1);
 		do_connect(cmd, argc,argv);
 	    int disconnect_count = 0;
 		while(BLE_STATUS != BT_CONNECTED)
@@ -862,7 +864,7 @@ FILE *fp_device_info;
 			if(tv.tv_sec - current_time > 20)
 			{
 				timeout_flag = 1;
-				reset_device();
+				//reset_device();
 				do_disconnect(cmd, argc,argv);
 				sleep(1);
 				break;
@@ -935,13 +937,44 @@ FILE *fp_device_info;
 			//hwid = 0;
 		}*/
 		OTA_status = do_OTA(cmd,argc,argv);
+		int disconnect_timeout = 0;
+		int ctrl_disconnect_times = 0;
 		while(OTA_status != OTA_SUCCESS)
 		{
 			if(BLE_STATUS == BT_DISCONNECTED)
 			{
 				printf("reconnect\n");
 				do_connect(cmd, argc,argv);
-				while(BLE_STATUS != BT_CONNECTED);	
+				printf("connect cmd sent\n");
+				usleep(100);
+				//判断超时
+				int disconnect_time = 0;
+				gettimeofday(&tv,NULL);
+				disconnect_time = tv.tv_sec;
+				
+				while(BLE_STATUS != BT_CONNECTED)
+				{
+					gettimeofday(&tv,NULL);
+					usleep(100);
+					if(tv.tv_sec - disconnect_time > 10)
+					{
+						printf("disconnect timeout\n");
+						disconnect_timeout = 1;
+						break;
+					}
+				}
+				ctrl_disconnect_times ++;
+				if(ctrl_disconnect_times >4)
+				{
+					disconnect_timeout = 1;
+					ctrl_disconnect_times = 0;
+				}
+				if(disconnect_timeout == 1)
+				{
+					do_disconnect(cmd, argc,argv);
+					printf("disconnect timeout --1\n");
+					break;
+				}
 				sleep(2);	
 				OTA_status = do_OTA(cmd,argc,argv);
 			}
@@ -951,6 +984,15 @@ FILE *fp_device_info;
 				usleep(100);
 				break;
 			}
+		}
+		if(disconnect_timeout == 1)
+		{
+			printf("disconnect timeout --2\n");
+			reset_device();
+			do_disconnect(cmd, argc,argv);
+			//usleep(100);
+			disconnect_timeout = 0;
+			continue;
 		}
 		#if 1
 		if(OTA_timeout_flag == 1)
@@ -973,13 +1015,38 @@ FILE *fp_device_info;
 		//for(int i = 0 ; i < argc;i++)
 		//printf("%s\n",argv[i]);
 		OTA_status = do_OTA(cmd,argc,argv);
+		int calc_encrypt_disconnect_times = 0;
 		while(OTA_status != OTA_SUCCESS)
 		{
 			if(BLE_STATUS == BT_DISCONNECTED)
 			{
 				printf("reconnect\n");
 				do_connect(cmd, argc,argv);
-				while(BLE_STATUS != BT_CONNECTED);	
+				int calc__encrypt_disconnect_timeout = 0;
+				gettimeofday(&tv,NULL);
+				calc__encrypt_disconnect_timeout = tv.tv_sec;
+				while(BLE_STATUS != BT_CONNECTED)
+				{
+					gettimeofday(&tv,NULL);
+					usleep(100);
+					if(tv.tv_sec - calc__encrypt_disconnect_timeout > 10)
+					{
+						printf("disconnect timeout\n");
+						disconnect_timeout = 1;
+						break;
+					}
+				}
+				calc_encrypt_disconnect_times++;
+						if(calc_encrypt_disconnect_times >4)
+						{
+							disconnect_timeout = 1;
+						}
+				if((disconnect_timeout == 1) )
+				{
+					printf("disconnect timeout --1\n");
+					calc_encrypt_disconnect_times = 0;
+					break;
+				}
 				sleep(2);	
 				OTA_status = do_OTA(cmd,argc,argv);
 			}
@@ -989,6 +1056,14 @@ FILE *fp_device_info;
 				break;
 			}
 			
+		}
+		if(disconnect_timeout == 1)
+		{
+			printf("disconnect timeout --2\n");
+			do_disconnect(cmd, argc,argv);
+			reset_device();
+			disconnect_timeout = 0;
+			continue;
 		}
 		if(OTA_timeout_flag == 1)
 		{
@@ -1009,13 +1084,41 @@ FILE *fp_device_info;
 		printf("%s\n",argv[4]);
 	
 				OTA_status = do_OTA(cmd,argc,argv);
+				int calc_app_disconnect_times = 0;
+				
 				while(OTA_status != OTA_SUCCESS)
 				{
 					if(BLE_STATUS == BT_DISCONNECTED)
 					{
+						
 						printf("reconnect\n");
 						do_connect(cmd, argc,argv);
-						while(BLE_STATUS != BT_CONNECTED);	
+						int calc_app_disconnect_timeout = 0;
+						gettimeofday(&tv,NULL);
+						calc_app_disconnect_timeout = tv.tv_sec;
+						while(BLE_STATUS != BT_CONNECTED)
+						{
+							gettimeofday(&tv,NULL);
+							usleep(100);
+							if(tv.tv_sec - calc_app_disconnect_timeout > 10)
+							{
+								printf("disconnect timeout\n");
+								disconnect_timeout = 1;
+								break;
+							}
+						}
+						
+						calc_app_disconnect_times++;
+						if(calc_app_disconnect_times >4)
+						{
+							disconnect_timeout = 1;
+						}
+						if((disconnect_timeout == 1) )
+						{
+							printf("disconnect timeout --1\n");
+							calc_app_disconnect_times = 0;
+							break;
+						}	
 						sleep(2);
 						OTA_status = do_OTA(cmd,argc,argv);						
 					}
@@ -1026,7 +1129,15 @@ FILE *fp_device_info;
 					}
 					
 				}
-		
+		if(disconnect_timeout == 1)
+		{
+			printf("disconnect timeout --2\n");
+			do_disconnect(cmd, argc,argv);
+			usleep(100);
+			reset_device();
+			disconnect_timeout = 0;
+			continue;
+		}
 		if(OTA_timeout_flag == 1)
 		{
 			OTA_timeout_flag = 0;
@@ -1179,3 +1290,71 @@ int do_upload(cmd_tbl_s * cmd, int argc,char *argv[])
 			curl_easy_cleanup(curl);
 			return ;
 }
+#if 0
+//////////////////////////////////////////////////////////////
+//query回调函数
+//
+//
+//
+/////////////////////////////////////////////////////////////
+size_t query_Log(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+	size_t size_read = 0;
+	//size_read = fwrite(ptr, size, nmemb, (FILE*)stream);
+	cout << (char*)ptr << endl;
+	query_OK_flag = 0;
+	if((strstr((const char *)ptr, (const char *)"\"code\":0") != NULL))
+	{
+		printf("设备已添加\n");
+		char * position =  strstr((char *)ptr, (char *)"\"calcBootloaderFwVersion\":");
+		
+		if(position == NULL)
+		{
+			printf("can't find calc boot version\n");
+		}
+		else
+		{
+			memcpy(calc_boot_version,position + strlen((const char *)"\"calcBootloaderFwVersion\":"),2);
+			puts(calc_boot_version);
+		}
+		
+		position =  strstr((char *)ptr, (char *)"\"controlBootloaderFwVersion\":");
+		if(position == NULL)
+		{
+			printf("can't find ctrl boot version\n");
+		}
+		else
+		{
+			memcpy(ctrl_boot_version,position + strlen((const char *)"\"controlBootloaderFwVersion\":"),2);
+			puts(ctrl_boot_version);
+		}
+		query_OK_flag = 1;
+	}
+	else if((strstr((const char *)ptr, (const char *)"\"code\":200") != NULL))
+	{
+		printf("设备未添加,禁止绑定会员卡\n");
+		query_OK_flag = 0;
+	}
+	return size_read;
+}
+void query(char * psn)
+{
+	CURL* curl = curl_easy_init();
+	char post[500];
+	sprintf(post,"cmd=1&psn=%s&page=1&pageSize=10",psn);
+	if (NULL == curl)
+	{
+		return ;
+	}
+	curl_easy_setopt(curl, CURLOPT_URL, "http://moss.extantfuture.com/device/bootloaderEditionAction.do");
+	curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "cookie.txt");
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post);
+	printf("%s\n",post);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, query_Log);
+	//curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+	curl_easy_setopt(curl, CURLOPT_POST, 1);
+	curl_easy_perform(curl);
+	curl_easy_cleanup(curl);
+	return ;
+}
+#endif
