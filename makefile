@@ -5,5 +5,7 @@ main.o: uart.h rxTask.h txTask.h
 	gcc -c main.c -lpthread -g
 	gcc -c List.c -o List.o -g
 .PHONY: clean
+.PHONY: check
+	g++ check.c -o check `pkg-config --cflags --libs gtk+-2.0` -Wl,-Bstatic -L ./lib/ -lcurl -Wl,-Bdynamic -lrt
 clean:
 	rm -f lucy $(objects)

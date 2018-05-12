@@ -511,12 +511,16 @@ INSTALL_CMD(standbyTest,10,do_stanbytest);
 				usleep(100);
 				if(tv.tv_sec - current_time > 20)
 				{
+					reset_device();
+					BLE_STATUS = BT_DISCONNECTED;
+					ClearPatchStatus();
 					printf("OTA timeout %d\n");
 					do_disconnect(cmd,argc,argv);
+					/*do_disconnect(cmd,argc,argv);
 					BLE_STATUS = BT_DISCONNECTED;
 					ClearPatchStatus();
 					free(firm_content);
-					return OTA_TIMEOUT;
+					return OTA_TIMEOUT;*/
 				}
 			}
 			while (GetPatchStatus() == 1)
@@ -848,7 +852,7 @@ FILE *fp_device_info;
 			printf("%s ",argv[i]);
 		printf("\n");*/
 		//do_upload(cmd, argc,argv);
-		sleep(1);
+		//sleep(1);
 		do_connect(cmd, argc,argv);
 	    int disconnect_count = 0;
 		while(BLE_STATUS != BT_CONNECTED)
@@ -867,18 +871,21 @@ FILE *fp_device_info;
 		disconnect_count = 0;
 		if(timeout_flag == 1)
 		{
-			do_disconnect(cmd, argc,argv);
+			//do_disconnect(cmd, argc,argv);
 			timeout_flag = 0;
 			continue;
 		}
 		
 		version_flag = 0;
-		sleep(4);
-		do_getver(cmd,argc,argv);
+		//sleep(4);
+		
+		gettimeofday(&tv,NULL);
+		current_time = tv.tv_sec;
+		//sleep(2);
 		gettimeofday(&tv,NULL);
 		current_time = tv.tv_sec;
 		int version_timeout_flag = 0;
-		while(version_flag != 1)
+		/*while(version_flag != 1)
 		{
 			gettimeofday(&tv,NULL);
 
@@ -889,24 +896,26 @@ FILE *fp_device_info;
 				break;
 			}
 			usleep(200);
-		}
-		printf("ctrl %d %d calc %d %d \n",ctrl_app_version,ctrl_boot_version,calc_app_version,calc_boot_version);
-		if((ctrl_app_version == 2116) && (calc_app_version == 1954))
+		}*/
+		//sleep(3);
+		//printf("ctrl %d %d calc %d %d \n",ctrl_app_version,ctrl_boot_version,calc_app_version,calc_boot_version);
+	/*	if((ctrl_app_version == 2116) && (calc_app_version == 1954))
 		{
 			do_upload(cmd,argc,argv);
 			do_disconnect(cmd, argc,argv);
 			continue;
-		}
+		}*/
 			
-		sleep(3);
+		//sleep(3);
 		//控制单元OTA文件
 		printf("%d   file %s\n",strlen(argv[5]),argv[5]);
 		//argv[4] = argv[5];
 		//memcpy(argv[4],argv[5],strlen(argv[5]));
 		argv[4] = "CTRL2116.bin";
-			sleep(10);
+		sleep(10);
 		do_gethwid(cmd,argc,argv);
-		
+		sleep(1);
+		do_getver(cmd,argc,argv);
 		gettimeofday(&tv,NULL);
 		int hwid_timeout_flag = 0;
 		while(hwid_flag != 1)
@@ -1034,13 +1043,15 @@ FILE *fp_device_info;
 
 			//		Calc_data_send(uartHandle,command, 3, WRITE_CMD);
 			sleep(2);
-		//do_connect(cmd, argc,argv);	
-		//sleep(8);
+		/*do_connect(cmd, argc,argv);	
+		sleep(8);*/
 		do_getver(cmd,argc,argv);
 		version_flag = 0;
-		gettimeofday(&tv,NULL);
+		sleep(2);
+		//gettimeofday(&tv,NULL);
+		//current_time = tv.tv_sec;
 		//int version_timeout_flag = 0;
-		while(version_flag != 1)
+		/*while(version_flag != 1)
 		{
 			gettimeofday(&tv,NULL);
 
@@ -1071,10 +1082,10 @@ FILE *fp_device_info;
 		else
 		{
 			printf("hwid %d\n",hw_id);
-		}
+		}*/
 		
 		do_upload(cmd,argc,argv);
-		sleep(2);
+		//sleep(2);
 		do_disconnect(cmd,argc,argv);
 		BLE_STATUS = BT_DISCONNECTED;
 		FILE * log;
@@ -1115,9 +1126,9 @@ int do_login(cmd_tbl_s * cmd, int argc,char *argv[])
 	{
 		return -1;
 	}
-	curl_easy_setopt(curl, CURLOPT_URL, "http://moss.internal.extantfuture.com/login/loginAction.do");
+	curl_easy_setopt(curl, CURLOPT_URL, "http://moss.extantfuture.com/login/loginAction.do");
 	curl_easy_setopt(curl, CURLOPT_COOKIEJAR, "cookie.txt");
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "userAccount=yanan&userPassword=E10ADC3949BA59ABBE56E057F20F883E");
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "userAccount=lucy&userPassword=E10ADC3949BA59ABBE56E057F20F883E");
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, login_Log);
 	//curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 	curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -1135,7 +1146,11 @@ size_t upload_Log(void *ptr, size_t size, size_t nmemb, void *stream)
 	puts(ptr);
 	if ((strstr((const char *)ptr, (const char *)"\"code\":0") != NULL))
 	{
-		printf("上报成功\n");
+		printf("添加设备成功\n");
+	}
+	else
+	{
+		printf("添加设备失败\n");
 	}
 	return size_read;
 }
@@ -1151,7 +1166,9 @@ int do_upload(cmd_tbl_s * cmd, int argc,char *argv[])
 	hw_id = 0;
 	ctrl_boot_version = 0;
 	calc_boot_version = 0;
-			curl_easy_setopt(curl, CURLOPT_URL, "http://moss.internal.extantfuture.com/device/bootloaderEditionAction.do");
+	ctrl_app_version = 0;
+	calc_app_version = 0;
+			curl_easy_setopt(curl, CURLOPT_URL, "http://moss.extantfuture.com/device/bootloaderEditionAction.do");
 			curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "cookie.txt");
 			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post);
 			printf("%s\n",post);
